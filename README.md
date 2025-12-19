@@ -14,7 +14,7 @@ fwhm=1.4
 lmin=300
 lmax=16000
 Lmin=300
-Lmax=1600
+Lmax=12000
 
 python prepare_filters.py $noise $fwhm $lmin $lmax
 python analyze_sims.py $noise $fwhm $lmin $lmax $Lmin $Lmax

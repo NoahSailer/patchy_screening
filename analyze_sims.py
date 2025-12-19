@@ -3,7 +3,7 @@ from pixell import enmap, curvedsky
 from astropy.table import Table
 from est import lens_hardened_full_sky_est_LM, stacked_est
 
-nstack = int(1e5)
+nstack = int(1e6)
 cutout_size = 20. # arcmin
 simulated_maps = ['tcmb','tcmb_lensed','tcmb_patchy','tcmb_patchy_lensed']
 def get_tau_hat_fname(map_in,noise,fwhm,lmin,lmax,Lmin,Lmax):
