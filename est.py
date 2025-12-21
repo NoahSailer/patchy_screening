@@ -2,7 +2,7 @@ import json, healpy as hp, numpy as np
 from scipy.interpolate import interp1d
 from pixell import enmap, utils
 
-def lens_hardened_full_sky_est_LM(input_map,noise,fwhm,lmin,lmax,Lmin,Lmax,verbose=False):
+def full_sky_est_LM(input_map,noise,fwhm,lmin,lmax,Lmin,Lmax,verbose=False):
     # SHOULD CHANGE THIS SO THAT FILTERS IS AN INPUT, OR FILTERS IS AUTOMATICALLY COMPUTED IF NOT FOUND
     """compute tau_hat_lm from an input_map"""
     safe_interp = lambda x,y,xp: interp1d(x,y,bounds_error=False,fill_value=0.)(xp)
@@ -14,12 +14,14 @@ def lens_hardened_full_sky_est_LM(input_map,noise,fwhm,lmin,lmax,Lmin,Lmax,verbo
     l_hp = np.arange(lmax+1)
     wf_hp = safe_interp(filters['l'],filters['wf_l'],l_hp) 
     ivar_hp = safe_interp(filters['l'],filters['ivar_l'],l_hp)
-    laplace_wf_hp = safe_interp(filters['l'],filters['l']**2*filters['wf_l'],l_hp)
-    laplace_ivar_hp = safe_interp(filters['l'],filters['l']**2*filters['ivar_l'],l_hp)
+    laplace_wf_hp = safe_interp(filters['l'],-1.*filters['l']**2*filters['wf_l'],l_hp)
+    laplace_ivar_hp = safe_interp(filters['l'],-1.*filters['l']**2*filters['ivar_l'],l_hp)
     L_hp = np.arange(Lmax+1)
     A_wf_ivar_hp = (L_hp>=Lmin)*(L_hp<=Lmax)*safe_interp(filters['L'],filters['A_wf_ivar_L'],L_hp)
     A_laplace_wf_ivar_hp = (L_hp>=Lmin)*(L_hp<=Lmax)*safe_interp(filters['L'],filters['A_laplace_wf_ivar_L'],L_hp)
-    #
+    rtt_nonzero = np.where(filters['rtt_L']!=0)
+    rtt_inv_hp = (L_hp>=Lmin)*(L_hp<=Lmax)*safe_interp(filters['L'][rtt_nonzero],1./filters['rtt_L'][rtt_nonzero],L_hp)
+    # compute filtered maps
     nside = hp.get_nside(input_map)
     t_lm = hp.map2alm(input_map,lmax=lmax)
     if verbose: print("Computed t_lm")
@@ -36,11 +38,14 @@ def lens_hardened_full_sky_est_LM(input_map,noise,fwhm,lmin,lmax,Lmin,Lmax,verbo
     laplace_wf_ivar_map = t_wf*t_laplace_ivar-t_laplace_wf*t_ivar
     del t_wf, t_ivar, t_laplace_ivar, t_laplace_wf
     if verbose: print("Computed wf_ivar_map and laplace_wf_ivar_map")
-    tau_hat_LM = hp.almxfl(hp.map2alm(wf_ivar_map,lmax=Lmax),A_wf_ivar_hp)
-    if verbose: print("Computed tau_hat_LM (term 1)")
-    tau_hat_LM+= hp.almxfl(hp.map2alm(laplace_wf_ivar_map,lmax=Lmax),A_laplace_wf_ivar_hp)
-    if verbose: print("Computed tau_hat_LM (term 2)")
-    return tau_hat_LM 
+	# compute minimum-variance and bias-hardened full sky estimates
+    tau_hat_mv_LM = hp.almxfl(hp.map2alm(wf_ivar_map,lmax=Lmax),-1.*rtt_inv_hp)
+    if verbose: print("Computed tau_hat_mv_LM")
+    tau_hat_bh_LM = hp.almxfl(hp.map2alm(wf_ivar_map,lmax=Lmax),A_wf_ivar_hp)
+    if verbose: print("Computed tau_hat_bh_LM (term 1)")
+    tau_hat_bh_LM+= hp.almxfl(hp.map2alm(laplace_wf_ivar_map,lmax=Lmax),A_laplace_wf_ivar_hp)
+    if verbose: print("Computed tau_hat_bh_LM (term 2)")
+    return tau_hat_mv_LM, tau_hat_bh_LM 
 
 def stacked_est(tau_hat,gcat,nstack=None,size=20.,res=0.25,verbose=False):
     """
@@ -50,8 +55,8 @@ def stacked_est(tau_hat,gcat,nstack=None,size=20.,res=0.25,verbose=False):
     size: float [arcmin]
     res: float [arcmin]
     """
-    if verbose: print(f"stacking on {nstack} out of {len(gcat)} galaxies")
     if nstack is None: nstack = len(gcat)
+    if verbose: print(f"stacking on {nstack} out of {len(gcat)} galaxies")
     ii = np.random.choice(len(gcat), nstack, replace=False) if nstack<len(gcat) else range(len(gcat))
     cutout_example = make_cutout(tau_hat, (gcat['RA'][0], gcat['DEC'][0]), size, cutout_res=res)
     tau_stack = np.zeros_like(cutout_example)

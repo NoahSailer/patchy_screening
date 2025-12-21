@@ -18,7 +18,7 @@ def compute_fiducial_cl(delta_T_arcmin=10.0, theta_fwhm_arcmin=1.4, lmax=int(5e4
     cosmo = Class()
     cosmo.set(params)
     cosmo.compute()
-    cls = cosmo.raw_cl(lmax) # .lensed_cl(lmax) # if you want lensed power spectra
+    cls = cosmo.lensed_cl(lmax)
     arcmin_to_rad = np.pi / (180.0 * 60.0)
     delta_T_rad = delta_T_arcmin * arcmin_to_rad * 1e-6  # K-radian
     theta_rad = theta_fwhm_arcmin * arcmin_to_rad  # radians
