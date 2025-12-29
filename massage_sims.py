@@ -1,12 +1,12 @@
 from pixell import enmap, curvedsky
 import numpy as np, healpy as hp
-# For now I'm using healpy in the estimator, but the data products are in pixell format.
+# For now I'm using healpy for the estimator, but the data products are in pixell format.
 # This script apodizes the (implicit) mask, constructs healpy maps with/without patchy
 # screening and lensing, and convolves them with a 1.4arcmin beam.   
 fwhm_beam = 1.4*np.pi/180/60  # 1.4 arcmin in radians
-fwhm_mask = 1*np.pi/180       # 1 degrees in radians (see below)
+fwhm_mask = 2*np.pi/180       # 1 degrees in radians (see below)
 nside = 8192    
-lmax = int(2*np.pi/fwhm_beam)
+lmax = 3*nside-1
 ogddir = 'data/from_boryana'
 tcmb_fname = 'unlensed_map_8192.fits'
 tcmb_lensed_fname = 'lensed_map_8192_ph201.fits'
@@ -32,7 +32,7 @@ mlm = curvedsky.map2alm(tcmb*0.+1., lmax=lmax).astype(np.complex128)  # raw (bin
 mr = hp.alm2map(mlm, nside=nside, lmax=lmax); mr[np.where(mr < 0.5)] = 0. ; mr[np.where(mr >= 0.5)] = 1. # raw (binary) mask
 m = np.clip(hp.alm2map(hp.almxfl(mlm,hp.gauss_beam(fwhm_mask, lmax=lmax)), nside=nside, lmax=lmax)*mr,0.,1.) # apodized mask
 # iterate, in the limit N->infinity the mask smoothly -> 0 near the edges
-N=4
+N=1
 for i in range(N):
     mlm = hp.map2alm(m, lmax=lmax)
     m = np.clip(hp.alm2map(hp.almxfl(mlm,hp.gauss_beam(fwhm_mask, lmax=lmax)), nside=nside, lmax=lmax)*mr,0.,1.)

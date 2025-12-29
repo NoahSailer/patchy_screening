@@ -12,9 +12,9 @@ Here's an example of (trying to) reconstruct tau from these sims
 noise=1.0
 fwhm=1.4
 lmin=300
-lmax=16000
-Lmin=300
-Lmax=16000
+lmax=10000
+Lmin=2000
+Lmax=10000
 
 python prepare_filters.py $noise $fwhm $lmin $lmax
 python analyze_sims.py $noise $fwhm $lmin $lmax $Lmin $Lmax

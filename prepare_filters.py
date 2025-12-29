@@ -13,7 +13,9 @@ def compute_fiducial_cl(delta_T_arcmin=10.0, theta_fwhm_arcmin=1.4, lmax=int(5e4
         'n_s': 0.9649,
         'lensing': 'yes',
         'output': 'tCl lCl',
-        'l_max_scalars': lmax
+        'l_max_scalars': lmax,
+        'accurate_lensing': 1, 
+        'k_max_tau0_over_l_max': 15.,
     }
     cosmo = Class()
     cosmo.set(params)
@@ -48,7 +50,7 @@ def rxy(L,fx,fy,fC0,fCinvtot,lmin=1,lmax=10e3,ntheta=300,fwhm=1.4):
     # Convert FWHM in arcmin to sigma in radians
     fwhm_rad = fwhm*np.pi/(180*60)
     sigma = fwhm_rad/(np.sqrt(16.*np.log(2))) 
-    beam  = lambda l: np.exp(-0.5*(l*sigma)**2)
+    beam  = lambda l: np.exp(-(l*sigma)**2)
     for i in range(ntheta):
         Lml    = (L**2+l**2-2*L*l*np.cos(theta[i]))**0.5
         intg   = fx(l,L,theta[i],fC0)*fy(l,L,theta[i],fC0)*fCinvtot(l)*fCinvtot(Lml)
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     L = np.linspace(2,lmax,nL)
     worker = partial(compute_all_rxy, fC0=fC0, fCinvtot=fCinvtot, lmin=lmin, lmax=lmax, ntheta=ntheta, fwhm=fwhm)
     filters = {'l':l,'ctt_l':ctt,'ctot_l':ctot,'wf_l':(l>=lmin)*(l<=lmax)*fC0(l)*fCinvtot(l),
-               'ivar_l':(l>=lmin)*(l<=lmax)*fCinvtot(l),'L':L}
+            'ivar_l':(l>=lmin)*(l<=lmax)*fCinvtot(l),'L':L}
     pool = mp.Pool(processes=(ncpu-1))
     filters['rtt_L'],filters['rkk_L'],filters['rtk_L'] = np.array(pool.map(worker,L)).T
     pool.close()
